@@ -75,9 +75,10 @@ namespace VVVV.Nodes
                     try
                     {
                         FImageGenerator = new ImageGenerator(FContextIn[0]);
+                        ImageMetaData ImageMetaData = FImageGenerator.GetMetaData();
 
-                        FTexWidth = FImageMetaData.XRes;
-                        FTexHeight = FImageMetaData.YRes;
+                        FTexWidth = ImageMetaData.XRes;
+                        FTexHeight = ImageMetaData.YRes;
                         
                         //Reinitalie the vvvv texture
                         Reinitialize();
@@ -93,7 +94,6 @@ namespace VVVV.Nodes
             else
             {
                 FInit = true;
-                FActiveThread = false;
             }
 
             if (FEnableIn[0] == true)

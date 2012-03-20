@@ -9,6 +9,7 @@
 
 #region usings
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
 
 using VVVV.PluginInterfaces.V1;
@@ -16,8 +17,8 @@ using VVVV.PluginInterfaces.V2;
 using VVVV.Utils.VColor;
 using VVVV.Utils.VMath;
 
-using OpenHardwareMonitor.Collections;
 using OpenHardwareMonitor.Hardware;
+
 
 
 using VVVV.Core.Logging;
@@ -40,34 +41,75 @@ namespace VVVV.Nodes
 		[Input("Update", DefaultValue = 0)]
 		IDiffSpread<bool> FUpdate;
 
-		[Output("Output")]
-		ISpread<string> FOutput;
+		[Output("Name")]
+		ISpread<string> FName;
+		
+		[Output("Value")]
+		ISpread<string> FValue;
 
 		[Import()]
 		ILogger FLogger;
 		
 		private Computer FComputer = new Computer();
 		private IHardware FHardware;
+		private SortedList<String,List<ISensor>> FInstances = new SortedList<String, List<ISensor>>();
+		private bool FInit = true;
 		#endregion fields & pins
 		
 		
- 
+		
 		//called when data for any output pin is requested
 		public void Evaluate(int SpreadMax)
 		{
+			if(FInit)
+			{
+				FComputer.Open();
+				FInit = false;
+			}
+			
 			if(FUpdate.IsChanged)
 			{
-				FOutput.SliceCount = FComputer.Hardware.Length;
-				
-				FComputer.Open();
-				int counter = 0;
-				foreach(IHardware Hardware in FComputer.Hardware)
+				ReadComputerHardware();
+				int Counter = 0;
+				IList<List<ISensor>> SensorLists= FInstances.Values;
+				foreach(List<ISensor> List in SensorLists)
 				{
-					Identifier Ident = Hardware.Identifier;
-					FOutput[counter] = Ident.ToString();
-					counter++;
+					FName.SliceCount = FValue.SliceCount = Counter + List.Count;
+					foreach(ISensor Sensor in List)
+					{
+						FName[Counter] = Sensor.Identifier.ToString();
+						FValue[Counter] = Sensor.Value.ToString();
+						Counter++;
+					}
 				}
 			}
+		}
+		
+		private void ReadComputerHardware()
+		{
+			FInstances.Clear();
+			foreach (IHardware Hardware in FComputer.Hardware)
+				ComputerHardwareAdded(Hardware);
+		}
+		
+		private void ComputerHardwareAdded(IHardware Hardware)
+		{
+			if (!Exists(Hardware.Identifier.ToString()))
+			{
+				List<ISensor> SensorList = new List<ISensor>();
+				foreach (ISensor Sensor in Hardware.Sensors)
+					SensorList.Add(Sensor);
+
+				FInstances.Add(Hardware.Identifier.ToString(),SensorList);
+
+			}
+
+			foreach (IHardware subHardware in Hardware.SubHardware)
+				ComputerHardwareAdded(subHardware);
+		}
+		
+		private bool Exists(string Identifier) {
+			return FInstances.ContainsKey(Identifier);
 		}
 	}
 }

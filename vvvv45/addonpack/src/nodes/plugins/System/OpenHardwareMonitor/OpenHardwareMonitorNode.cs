@@ -40,18 +40,23 @@ namespace VVVV.Nodes
 		#region fields & pins
 		[Input("Update", DefaultValue = 0)]
 		IDiffSpread<bool> FUpdate;
+		
+		[Output("Hardware")]
+		ISpread<string> FHardware;
 
+		[Output("Identifier")]
+		ISpread<string> FIdentifier;
+		
 		[Output("Name")]
 		ISpread<string> FName;
 		
 		[Output("Value")]
-		ISpread<string> FValue;
+		ISpread<float> FValue;
 
 		[Import()]
 		ILogger FLogger;
 		
 		private Computer FComputer = new Computer();
-		private IHardware FHardware;
 		private SortedList<String,List<ISensor>> FInstances = new SortedList<String, List<ISensor>>();
 		private bool FInit = true;
 		#endregion fields & pins
@@ -67,18 +72,21 @@ namespace VVVV.Nodes
 				FInit = false;
 			}
 			
-			if(FUpdate.IsChanged)
+			if(FUpdate.IsChanged && FUpdate[0] == true)
 			{
 				ReadComputerHardware();
 				int Counter = 0;
 				IList<List<ISensor>> SensorLists= FInstances.Values;
 				foreach(List<ISensor> List in SensorLists)
 				{
-					FName.SliceCount = FValue.SliceCount = Counter + List.Count;
+					FIdentifier.SliceCount = FHardware.SliceCount = FValue.SliceCount = FName.SliceCount = Counter + List.Count;
 					foreach(ISensor Sensor in List)
 					{
-						FName[Counter] = Sensor.Identifier.ToString();
-						FValue[Counter] = Sensor.Value.ToString();
+						Sensor.Hardware.Update();
+						FHardware[Counter] = Sensor.Hardware.Name;
+						FIdentifier[Counter] = Sensor.Identifier.ToString();
+						FName[Counter] = Sensor.Name;
+						FValue[Counter] = (float) Sensor.Value;
 						Counter++;
 					}
 				}
